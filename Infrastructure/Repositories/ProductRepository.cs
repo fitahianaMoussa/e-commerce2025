@@ -12,9 +12,30 @@ public class ProductRepository(StoreContext context) : IProductRepository
         return await context.Products.FindAsync(id);
     }
 
-    public async Task<IReadOnlyCollection<Product>> GetProductsAsync()
+    public async Task<IReadOnlyCollection<Product>> GetProductsAsync(string? brand,string? type,string? sort)
     {
-        return await context.Products.ToListAsync();
+        var query = context.Products.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(brand))
+        {
+            query = query.Where(p => p.Brand.Contains(brand));
+        }
+
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            query = query.Where(p => p.Type.Contains(type));
+        }
+
+
+        query = sort switch
+        {
+            "priceAsc" => query.OrderBy(p => p.Price),
+            "priceDesc" => query.OrderByDescending(p => p.Price),
+            _ => query.OrderBy(p => p.Price)
+
+        };
+                
+        return await query.ToListAsync();
     }
 
     public void AddProduct(Product product)
@@ -34,11 +55,21 @@ public class ProductRepository(StoreContext context) : IProductRepository
 
     public bool ProductExists(int id)
     {
-        return context.Products.Any(e => e.Id == id);
+        return context.Products.Any(p => p.Id == id);
     }
 
     public async Task<bool> SaveChangesAsync()
     {
         return await context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<IReadOnlyList<string>> GetBrandAsync()
+    {
+        return await context.Products.Select(p => p.Brand).Distinct().ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<string>> GetTypesAsync()
+    {
+        return await context.Products.Select(p => p.Type).Distinct().ToListAsync();
     }
 }
